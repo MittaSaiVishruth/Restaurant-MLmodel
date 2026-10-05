@@ -203,6 +203,17 @@ async def api_root() -> dict[str, str]:
     return {"status": "ok", "service": "GastroEval API"}
 
 
+@app.get("/")
+async def root() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "service": "GastroEval API",
+        "message": "GastroEval backend is running.",
+        "health": "/api/health",
+        "analyze": "/api/analyze",
+    }
+
+
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "GastroEval API"}

@@ -33,6 +33,12 @@ def test_api_root() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_deployment_root() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json()["service"] == "GastroEval API"
+
+
 def test_analyze_valid_request() -> None:
     response = client.post(
         "/api/analyze",
