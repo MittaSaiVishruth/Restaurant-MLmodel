@@ -249,8 +249,7 @@ From the project directory:
     python -m venv .venv
     .venv\\Scripts\\activate       # Windows
     source .venv/bin/activate       # macOS/Linux
-    pip install -r requirements.txt
-    pip install pytest httpx
+    pip install -r requirements-dev.txt
 
 Run FastAPI locally:
 
@@ -293,7 +292,7 @@ Vercel deployment
 6. Add `FRONTEND_ORIGIN` under Project Settings → Environment Variables.
 7. Deploy and verify `/api/health`, then test `/api/analyze` with at least 10 non-empty reviews.
 
-The `vercel.json` rewrite routes `/api/*` requests to the FastAPI function. The project must retain all five required joblib artifacts in `gastroeval_artifacts/`.
+Vercel natively detects the FastAPI application exported from `api/index.py`; no custom rewrite is required. The project must retain all five required joblib artifacts in `gastroeval_artifacts/`.
 
 Testing
 -------

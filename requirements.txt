@@ -1,6 +1,5 @@
 fastapi
 pydantic
-uvicorn
 numpy
 pandas
 scikit-learn==1.8.0
