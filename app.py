@@ -3,11 +3,13 @@ from __future__ import annotations
 import html
 import inspect
 import io
+import base64
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from gastroeval_engine import analyze_reviews
 
@@ -25,22 +27,23 @@ st.set_page_config(
 
 BASE_DIR = Path(__file__).resolve().parent
 ARTIFACT_DIR = BASE_DIR / "gastroeval_artifacts"
+LOGO_PATH = BASE_DIR / "assets" / "iiit-dharwad-logo.webp"
 
 
 # -----------------------------------------------------------------------------
 # Design tokens
 # -----------------------------------------------------------------------------
-BG = "#F7F6F2"
-SURFACE = "#FFFFFF"
-SURFACE_ALT = "#F1F0EB"
-TEXT = "#17202A"
-MUTED = "#64748B"
-SUBTLE = "#94A3B8"
-BORDER = "#E5E7EB"
-ACCENT = "#EA580C"
-ACCENT_DARK = "#C2410C"
-SUCCESS = "#355C4A"
-DANGER = "#9A3412"
+BG = "#0E1117"
+SURFACE = "#171B24"
+SURFACE_ALT = "#202631"
+TEXT = "#F4F7FB"
+MUTED = "#AAB4C3"
+SUBTLE = "#7F8A9C"
+BORDER = "#2C3441"
+ACCENT = "#FF7A18"
+ACCENT_DARK = "#FF9A52"
+SUCCESS = "#76C69A"
+DANGER = "#FF9A52"
 
 NAV_ITEMS = (
     ("analyze", "Analyze"),
@@ -80,7 +83,7 @@ DEMO_REVIEWS = [
 CSS = f"""
 <style>
 :root {{
-    color-scheme: light !important;
+    color-scheme: dark !important;
     --ge-bg: {BG};
     --ge-surface: {SURFACE};
     --ge-surface-alt: {SURFACE_ALT};
@@ -101,7 +104,7 @@ html, body,
 }}
 
 body {{
-    color-scheme: light !important;
+    color-scheme: dark !important;
 }}
 
 /* Native shell */
@@ -261,7 +264,7 @@ footer {{
 .st-key-load_demo button:hover,
 .st-key-clear_analysis button:hover,
 .st-key-edit_results button:hover {{
-    border-color: #CBD5E1 !important;
+    border-color: #3B4555 !important;
     background: var(--ge-surface-alt) !important;
 }}
 
@@ -301,14 +304,14 @@ footer {{
 
 [data-testid="stTextInput"] input:focus,
 [data-testid="stTextArea"] textarea:focus {{
-    border-color: #CBD5E1 !important;
+    border-color: #3B4555 !important;
     box-shadow: 0 0 0 2px rgba(234, 88, 12, .08) !important;
 }}
 
 /* File uploader */
 [data-testid="stFileUploaderDropzone"] {{
     background: var(--ge-surface) !important;
-    border: 1px dashed #CBD5E1 !important;
+    border: 1px dashed #3B4555 !important;
     border-radius: 8px !important;
 }}
 
@@ -327,7 +330,7 @@ footer {{
 
 [data-testid="stFileUploaderDropzone"] button:hover {{
     background: var(--ge-surface-alt) !important;
-    border-color: #CBD5E1 !important;
+    border-color: #3B4555 !important;
 }}
 
 /* Selectbox */
@@ -412,11 +415,78 @@ footer {{
 .ge-note {{
     margin: 1rem 0;
     padding: 10px 12px;
-    border-left: 2px solid #CBD5E1;
-    background: rgba(255,255,255,.55);
-    color: var(--ge-muted) !important;
+    border: 1px solid var(--ge-border);
+    border-left: 3px solid var(--ge-accent);
+    background: var(--ge-surface);
+    color: var(--ge-text) !important;
     font-size: .75rem;
     line-height: 1.55;
+}}
+
+/* About section shared by every page */
+.ge-about {{
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+    margin-top: 3rem;
+    padding: 22px 0;
+    border-top: 1px solid var(--ge-border);
+    border-bottom: 1px solid var(--ge-border);
+}}
+
+.ge-about-logo {{
+    width: 126px;
+    height: 96px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #FFFFFF;
+}}
+
+.ge-about-kicker {{
+    color: var(--ge-accent) !important;
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}}
+
+.ge-about-title {{
+    margin-top: 5px;
+    color: var(--ge-text) !important;
+    font-size: 1.05rem;
+    font-weight: 760;
+}}
+
+.ge-about-copy {{
+    margin-top: 5px;
+    color: var(--ge-muted) !important;
+    font-size: .72rem;
+}}
+
+.ge-about-team {{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 17px;
+}}
+
+.ge-about-member {{
+    padding-top: 10px;
+    border-top: 1px solid var(--ge-border);
+}}
+
+.ge-about-name {{
+    color: var(--ge-text) !important;
+    font-size: .72rem;
+    font-weight: 720;
+}}
+
+.ge-about-id {{
+    margin-top: 3px;
+    color: var(--ge-subtle) !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .66rem;
 }}
 
 /* Result summary */
@@ -450,6 +520,60 @@ footer {{
     color: var(--ge-muted) !important;
     font-size: .8rem;
     font-weight: 650;
+}}
+
+/* Quiet motion system: the score and result surfaces arrive with a small
+   editorial lift instead of a dashboard-style burst. */
+@keyframes ge-rise-in {{
+    from {{ opacity: 0; transform: translateY(10px); }}
+    to {{ opacity: 1; transform: translateY(0); }}
+}}
+
+@keyframes ge-ring-draw {{
+    from {{ stroke-dashoffset: 163; }}
+    to {{ stroke-dashoffset: var(--ge-score-offset); }}
+}}
+
+.ge-result-head {{
+    animation: ge-rise-in .55s cubic-bezier(.22,.8,.24,1) both;
+}}
+
+.ge-score-signal {{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 82px;
+}}
+
+.ge-score-ring {{
+    width: 58px;
+    height: 58px;
+    transform: rotate(-90deg);
+    overflow: visible;
+}}
+
+.ge-score-ring-track,
+.ge-score-ring-value {{
+    fill: none;
+    stroke-width: 4;
+}}
+
+.ge-score-ring-track {{ stroke: var(--ge-surface-alt); }}
+.ge-score-ring-value {{
+    stroke: var(--ge-accent);
+    stroke-linecap: round;
+    stroke-dasharray: 163;
+    animation: ge-ring-draw .9s .15s cubic-bezier(.22,.8,.24,1) both;
+}}
+
+.ge-score-kicker {{
+    margin-bottom: 4px;
+    color: var(--ge-subtle) !important;
+    font-size: .62rem;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
 }}
 
 .ge-recommendation {{
@@ -668,7 +792,7 @@ hr {{
 
 [data-testid="stDownloadButton"] button:hover {{
     background: var(--ge-surface-alt) !important;
-    border-color: #CBD5E1 !important;
+    border-color: #3B4555 !important;
     color: var(--ge-text) !important;
 }}
 
@@ -731,6 +855,110 @@ hr {{
     margin-top: .95rem;
 }}
 
+.ge-chart-shell .stPlotlyChart {{
+    animation: ge-rise-in .65s .08s cubic-bezier(.22,.8,.24,1) both;
+}}
+
+/* Full-screen analysis loading state */
+.ge-analysis-loading {{
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14, 17, 23, .82);
+    backdrop-filter: blur(8px);
+}}
+
+.ge-loading-card {{
+    width: min(360px, calc(100vw - 48px));
+    padding: 28px 26px 24px;
+    border: 1px solid var(--ge-border);
+    background: var(--ge-surface);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .34);
+    text-align: center;
+}}
+
+.ge-loading-card .ge-loader-ring {{
+    width: 34px;
+    height: 34px;
+    margin: 0 auto 18px;
+    border-width: 3px;
+}}
+
+.ge-loading-title {{
+    color: var(--ge-text) !important;
+    font-size: .95rem;
+    font-weight: 760;
+}}
+
+.ge-loading-copy {{
+    margin-top: 7px;
+    color: var(--ge-muted) !important;
+    font-size: .73rem;
+    line-height: 1.5;
+}}
+
+.ge-loading-line {{
+    height: 3px;
+    margin-top: 20px;
+    overflow: hidden;
+    background: var(--ge-surface-alt);
+}}
+
+.ge-loading-line span {{
+    display: block;
+    width: 42%;
+    height: 100%;
+    background: var(--ge-accent);
+    animation: ge-loading-sweep 1.25s ease-in-out infinite;
+}}
+
+.ge-loader-ring {{
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    border: 2px solid var(--ge-surface-alt);
+    border-top-color: var(--ge-accent);
+    border-radius: 50%;
+    animation: ge-spin .8s linear infinite;
+}}
+
+@keyframes ge-spin {{
+    to {{ transform: rotate(360deg); }}
+}}
+
+.ge-loader-dots::after {{
+    content: "";
+    animation: ge-dots 1.2s steps(4, end) infinite;
+}}
+
+@keyframes ge-dots {{
+    0%, 20% {{ content: ""; }}
+    40% {{ content: "."; }}
+    60% {{ content: ".."; }}
+    80%, 100% {{ content: "..."; }}
+}}
+
+@keyframes ge-loading-sweep {{
+    0% {{ transform: translateX(-120%); }}
+    50%, 100% {{ transform: translateX(280%); }}
+}}
+
+/* Plotly's SVG bars become the interaction: hover gently lifts the selected
+   column instead of requiring a separate replay control. */
+.ge-bar-shell .plotly .point {{
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    transition: transform .24s ease, filter .24s ease;
+}}
+
+.ge-bar-shell .plotly .point:hover {{
+    transform: scaleY(1.055);
+    filter: brightness(1.12);
+}}
+
 .ge-bar-shell .stPlotlyChart {{
     width: 100% !important;
 }}
@@ -770,6 +998,15 @@ hr {{
 
     .ge-method-body {{
         grid-column: 2;
+    }}
+
+    .ge-about {{
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }}
+
+    .ge-about-team {{
+        grid-template-columns: 1fr;
     }}
 }}
 
@@ -1027,6 +1264,45 @@ def render_brand() -> None:
     )
 
 
+def render_about_us() -> None:
+    """Render the project team and college identity at the end of every view."""
+    if LOGO_PATH.exists():
+        encoded_logo = base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+        logo_markup = (
+            f'<img class="ge-about-logo" src="data:image/webp;base64,{encoded_logo}" '
+            'alt="IIIT Dharwad logo" />'
+        )
+    else:
+        logo_markup = '<div class="ge-about-logo" aria-label="IIIT Dharwad logo"></div>'
+
+    st.markdown(
+        f"""
+        <section class="ge-about" aria-label="About GastroEval">
+            <div>{logo_markup}</div>
+            <div>
+                <div class="ge-about-kicker">About us</div>
+                <div class="ge-about-title">GastroEval project team</div>
+                <div class="ge-about-team">
+                    <div class="ge-about-member">
+                        <div class="ge-about-name">MITTA SAI VISHRUTH</div>
+                        <div class="ge-about-id">25BDA066</div>
+                    </div>
+                    <div class="ge-about-member">
+                        <div class="ge-about-name">SRI HARSHA CHINNAM</div>
+                        <div class="ge-about-id">25BDA028</div>
+                    </div>
+                    <div class="ge-about-member">
+                        <div class="ge-about-name">DEVADARSHA SAI</div>
+                        <div class="ge-about-id">25BDA134</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_quality_note(reviews: list[str]) -> None:
     stats = review_quality_stats(reviews)
     if stats["duplicates"] > 0:
@@ -1049,17 +1325,27 @@ def score_bar(score: Any) -> str:
     return f"<div class='ge-bar'><span style='width:{score:.1f}%;'></span></div>"
 
 
-def render_aspect_chart(aspect_summary: pd.DataFrame) -> None:
-    """Render the six aspect scores as an interactive, animated horizontal bar chart."""
-    try:
-        import plotly.graph_objects as go
-    except ImportError:
-        st.caption("The interactive aspect graph needs Plotly. Install the project requirements and restart Streamlit.")
-        fallback = aspect_summary[["Aspect", "Aspect_Score", "Evidence_Count"]].copy()
-        fallback.columns = ["Aspect", "Score", "Evidence units"]
-        ge_dataframe(fallback, _stretch=True, hide_index=True)
-        return
+def score_signal_markup(score: float) -> str:
+    """Return the score with a compact animated confidence signal."""
+    bounded = max(0.0, min(100.0, safe_float(score)))
+    circumference = 163.0
+    offset = circumference * (1.0 - bounded / 100.0)
+    # Keep this fragment left-aligned. Leading spaces in a nested multiline
+    # fragment can make Streamlit's Markdown parser treat the next HTML block
+    # as a code block.
+    return (
+        f'<div class="ge-score-signal" style="--ge-score-offset:{offset:.2f};">'
+        '<svg class="ge-score-ring" viewBox="0 0 64 64" aria-hidden="true">'
+        '<circle class="ge-score-ring-track" cx="32" cy="32" r="26"></circle>'
+        '<circle class="ge-score-ring-value" cx="32" cy="32" r="26"></circle>'
+        '</svg><div><div class="ge-score-kicker">GastroEval score</div>'
+        f'<div class="ge-score-line"><div class="ge-score">{bounded:.1f}</div>'
+        '<div class="ge-score-unit">/ 100</div></div></div></div>'
+    )
 
+
+def render_aspect_chart(aspect_summary: pd.DataFrame) -> None:
+    """Render the six aspect scores as an interactive vertical chart."""
     frame = aspect_summary.copy()
     frame["Aspect"] = frame["Aspect"].astype(str)
     frame["Score"] = pd.to_numeric(frame["Aspect_Score"], errors="coerce")
@@ -1087,169 +1373,98 @@ def render_aspect_chart(aspect_summary: pd.DataFrame) -> None:
         )
         return
 
-    customdata = supported[["Evidence"]].to_numpy()
-    scores = supported["Score"].clip(0, 100).astype(float).round(1).tolist()
-    aspects = supported["Aspect"].tolist()
+    # Use a small inline SVG for this presentation chart. It keeps the graph
+    # lightweight and lets the columns animate on hover without Plotly's
+    # built-in hover tooltip/white label box.
+    chart_width = 980
+    chart_height = 470
+    plot_left = 70
+    plot_right = 24
+    plot_top = 28
+    plot_bottom = 112
+    plot_height = chart_height - plot_top - plot_bottom
+    plot_width = chart_width - plot_left - plot_right
+    slot = plot_width / max(len(supported), 1)
+    bar_width = min(98.0, slot * 0.58)
 
-    # Frames provide a lightweight entrance animation and a visible Replay control.
-    # The chart itself remains fully usable even when reduced motion is preferred.
-    steps = 12
-    frames = []
-    for i in range(steps + 1):
-        progress = i / steps
-        frames.append(
-            go.Frame(
-                name=f"aspect_frame_{i}",
-                data=[
-                    go.Bar(
-                        x=[round(value * progress, 1) for value in scores],
-                        y=aspects,
-                        customdata=customdata,
-                        orientation="h",
-                        marker=dict(
-                            color=ACCENT,
-                            line=dict(color=ACCENT_DARK, width=0.6),
-                        ),
-                        text=[f"{value:.0f}" for value in scores],
-                        textposition="outside",
-                        textfont=dict(color=TEXT, size=12),
-                        cliponaxis=False,
-                        hovertemplate=(
-                            "<b>%{y}</b><br>"
-                            "Score: %{x:.1f}/100<br>"
-                            "Evidence units: %{customdata[0]}<br>"
-                            "<span style='color:#EA580C'>Hover to inspect this dimension</span>"
-                            "<extra></extra>"
-                        ),
-                        name="Aspect score",
-                    )
-                ],
-            )
+    grid_lines = []
+    for tick in (0, 25, 50, 75, 100):
+        y = plot_top + plot_height - (tick / 100.0) * plot_height
+        grid_lines.append(
+            f'<line class="ge-svg-grid" x1="{plot_left}" y1="{y:.1f}" '
+            f'x2="{chart_width - plot_right}" y2="{y:.1f}" />'
+            f'<text class="ge-svg-tick" x="{plot_left - 14}" y="{y + 4:.1f}" '
+            f'text-anchor="end">{tick}</text>'
         )
 
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=scores,
-                y=aspects,
-                orientation="h",
-                customdata=customdata,
-                marker=dict(
-                    color=ACCENT,
-                    line=dict(color=ACCENT_DARK, width=0.6),
-                ),
-                text=[f"{v:.0f}" for v in scores],
-                textposition="outside",
-                textfont=dict(color=TEXT, size=12),
-                cliponaxis=False,
-                hovertemplate=(
-                    "<b>%{y}</b><br>"
-                    "Score: %{x:.1f}/100<br>"
-                    "Evidence units: %{customdata[0]}<br>"
-                    "<span style='color:#EA580C'>Hover to inspect this dimension</span>"
-                    "<extra></extra>"
-                ),
-                name="Aspect score",
-            )
-        ],
-        frames=frames,
-    )
+    bars = []
+    for index, (_, row) in enumerate(supported.iterrows()):
+        aspect = html.escape(str(row["Aspect"]))
+        score = max(0.0, min(100.0, safe_float(row["Score"])))
+        evidence_count = int(row["Evidence"])
+        center = plot_left + slot * (index + 0.5)
+        x = center - bar_width / 2
+        y = plot_top + plot_height - (score / 100.0) * plot_height
+        label = str(row["Aspect"])
+        words = label.split()
+        first_line = " ".join(words[:2]) if len(words) > 2 else label
+        second_line = " ".join(words[2:]) if len(words) > 2 else ""
+        label_markup = (
+            f'<tspan x="{center:.1f}" dy="0">{html.escape(first_line)}</tspan>'
+            if not second_line
+            else f'<tspan x="{center:.1f}" dy="0">{html.escape(first_line)}</tspan>'
+            f'<tspan x="{center:.1f}" dy="14">{html.escape(second_line)}</tspan>'
+        )
+        bars.append(
+            f'<g class="ge-svg-bar" role="img" aria-label="{aspect}: {score:.1f} out of 100">'
+            f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_width:.1f}" '
+            f'height="{max(2.0, plot_top + plot_height - y):.1f}" rx="4" />'
+            f'<text class="ge-svg-value" x="{center:.1f}" y="{y - 10:.1f}" '
+            f'text-anchor="middle">{score:.0f}</text>'
+            f'<text class="ge-svg-label" x="{center:.1f}" y="{chart_height - 66}" '
+            f'text-anchor="middle">{label_markup}</text>'
+            f'</g>'
+        )
 
-    fig.update_layout(
-        height=max(390, 70 * len(supported) + 90),
-        margin=dict(l=8, r=58, t=28, b=44),
-        paper_bgcolor=BG,
-        plot_bgcolor=BG,
-        showlegend=False,
-        hovermode="closest",
-        hoverdistance=20,
-        bargap=0.32,
-        transition=dict(duration=450, easing="cubic-in-out"),
-        font=dict(
-            family="Inter, system-ui, -apple-system, Segoe UI, sans-serif",
-            color=TEXT,
-            size=12,
-        ),
-        updatemenus=[
-            dict(
-                type="buttons",
-                direction="left",
-                showactive=False,
-                x=0,
-                xanchor="left",
-                y=1.06,
-                yanchor="bottom",
-                pad=dict(r=4, t=2, b=2, l=0),
-                buttons=[
-                    dict(
-                        label="Replay",
-                        method="animate",
-                        args=[
-                            [f"aspect_frame_{i}" for i in range(steps + 1)],
-                            {
-                                "frame": {"duration": 55, "redraw": True},
-                                "transition": {"duration": 35, "easing": "cubic-in-out"},
-                                "fromcurrent": False,
-                                "mode": "immediate",
-                            },
-                        ],
-                    )
-                ],
-                font=dict(size=10, color=TEXT),
-                bgcolor=SURFACE,
-                bordercolor=BORDER,
-                borderwidth=1,
-            )
-        ],
-        xaxis=dict(
-            range=[0, 105],
-            tickvals=[0, 25, 50, 75, 100],
-            ticktext=["0", "25", "50", "75", "100"],
-            title="Score",
-            title_font=dict(color=MUTED, size=11),
-            tickfont=dict(color=MUTED, size=10),
-            gridcolor=BORDER,
-            gridwidth=1,
-            zeroline=False,
-            linecolor=BORDER,
-            fixedrange=True,
-        ),
-        yaxis=dict(
-            categoryorder="array",
-            categoryarray=aspects[::-1],
-            tickfont=dict(color=TEXT, size=11),
-            gridcolor="rgba(0,0,0,0)",
-            fixedrange=True,
-            automargin=True,
-        ),
-        hoverlabel=dict(
-            bgcolor=TEXT,
-            bordercolor=ACCENT,
-            font=dict(color="#FFFFFF", size=12),
-            align="left",
-            namelength=-1,
-        ),
+    svg_chart = (
+        '<div class="ge-svg-chart-shell">'
+        '<svg class="ge-svg-chart" viewBox="0 0 980 470" role="img" '
+        'aria-label="Animated restaurant aspect scores">'
+        + "".join(grid_lines)
+        + f'<line class="ge-svg-axis" x1="{plot_left}" y1="{plot_top + plot_height}" '
+        f'x2="{chart_width - plot_right}" y2="{plot_top + plot_height}" />'
+        + "".join(bars)
+        + f'<text class="ge-svg-axis-title" x="18" y="{plot_top + plot_height / 2:.1f}" '
+        'transform="rotate(-90 18 220)">Score</text>'
+        + '</svg></div>'
     )
-
-    st.markdown('<div class="ge-chart-shell ge-bar-shell">', unsafe_allow_html=True)
-    ge_plotly_chart(
-        fig,
-        _stretch=True,
-        theme=None,
-        config={
-            "displaylogo": False,
-            "displayModeBar": False,
-            "responsive": True,
-            "scrollZoom": False,
-            "doubleClick": False,
-        },
-        key="aspect_profile_bar",
+    components.html(
+        """<style>
+        html, body { margin: 0; background: transparent; overflow: hidden; }
+        .ge-svg-chart-shell { width: 100%; background: #0E1117; }
+        .ge-svg-chart { display: block; width: 100%; height: auto; min-height: 390px; }
+        .ge-svg-grid { stroke: #2C3441; stroke-width: 1; }
+        .ge-svg-axis { stroke: #3B4555; stroke-width: 1; }
+        .ge-svg-tick, .ge-svg-axis-title { fill: #AAB4C3; font: 12px Inter, system-ui, sans-serif; }
+        .ge-svg-axis-title { font-size: 11px; }
+        .ge-svg-bar rect { fill: #FF7A18; stroke: #FF9A52; stroke-width: 1; cursor: pointer;
+            transform-box: fill-box; transform-origin: center bottom;
+            transition: transform .24s ease, filter .24s ease; }
+        .ge-svg-bar:hover rect { transform: scaleY(1.06); filter: brightness(1.14); }
+        .ge-svg-value { fill: #F4F7FB; font: 700 14px Inter, system-ui, sans-serif; pointer-events: none; }
+        .ge-svg-label { fill: #F4F7FB; font: 11px Inter, system-ui, sans-serif; pointer-events: none; }
+        @media (prefers-reduced-motion: reduce) {
+            .ge-svg-bar rect { transition: none; }
+        }
+        </style>""" + svg_chart,
+        height=470,
+        scrolling=False,
     )
-
-    note = "Hover a bar for its score and evidence count. Use Replay to animate the profile."
+    note = "Hover a column to animate it. Scores use a 0–100 scale."
     if missing:
         note += " Insufficient evidence: " + ", ".join(missing) + "."
-    st.markdown(f'<div class="ge-chart-note">{esc(note)}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="ge-chart-note">{esc(note)}</div>', unsafe_allow_html=True)
+    return
 
 def render_aspect_rows(aspect_summary: pd.DataFrame) -> None:
     """Accessible native fallback for environments without Plotly."""
@@ -1572,18 +1787,30 @@ if st.session_state.view == "analyze":
         elif len(reviews) < 10:
             st.error(f"Add at least 10 reviews before starting the analysis. You currently have {len(reviews)}.")
         else:
-            with st.spinner("Analyzing review evidence…"):
-                try:
-                    result = run_analysis(name, address, reviews)
-                except Exception as exc:
-                    st.error(f"Analysis failed: {exc}")
-                else:
-                    st.session_state.analysis_restaurant = name
-                    st.session_state.analysis_address = address
-                    st.session_state.analysis_reviews = reviews
-                    st.session_state.result = result
-                    st.session_state.view = "results"
-                    st.rerun()
+            loading_slot = st.empty()
+            loading_slot.markdown(
+                '<div class="ge-analysis-loading"><div class="ge-loading-card">'
+                '<span class="ge-loader-ring"></span>'
+                '<div class="ge-loading-title">Building your restaurant profile'
+                '<span class="ge-loader-dots"></span></div>'
+                '<div class="ge-loading-copy">Reading review evidence, scoring six dimensions, and preparing the results.</div>'
+                '<div class="ge-loading-line"><span></span></div>'
+                '</div></div>',
+                unsafe_allow_html=True,
+            )
+            try:
+                result = run_analysis(name, address, reviews)
+            except Exception as exc:
+                st.error(f"Analysis failed: {exc}")
+            else:
+                st.session_state.analysis_restaurant = name
+                st.session_state.analysis_address = address
+                st.session_state.analysis_reviews = reviews
+                st.session_state.result = result
+                st.session_state.view = "results"
+                st.rerun()
+            finally:
+                loading_slot.empty()
 
 
 # -----------------------------------------------------------------------------
@@ -1614,10 +1841,7 @@ elif st.session_state.view == "results":
         f"""
         <div class="ge-result-head">
             <div>
-                <div class="ge-score-line">
-                    <div class="ge-score">{score:.1f}</div>
-                    <div class="ge-score-unit">/ 100</div>
-                </div>
+                {score_signal_markup(score)}
                 <div class="ge-meta">
                     <span><b>{len(reviews)}</b> reviews analyzed</span>
                     <span><b>{int(result['evidence_count'])}</b> evidence units</span>
@@ -1836,7 +2060,9 @@ else:
 # -----------------------------------------------------------------------------
 # Footer
 # -----------------------------------------------------------------------------
+render_about_us()
+
 st.markdown(
-    '<div style="margin-top:3rem;color:#94A3B8;font-size:.66rem;">GastroEval · Explainable restaurant review analytics</div>',
+    '<div style="margin-top:3rem;color:#7F8A9C;font-size:.66rem;">GastroEval · Explainable restaurant review analytics</div>',
     unsafe_allow_html=True,
 )
