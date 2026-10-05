@@ -36,7 +36,9 @@ def test_api_root() -> None:
 def test_deployment_root() -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json()["service"] == "GastroEval API"
+    assert response.headers["content-type"].startswith("text/html")
+    assert "GastroEval" in response.text
+    assert 'id="analysis-form"' in response.text
 
 
 def test_analyze_valid_request() -> None:

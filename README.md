@@ -221,23 +221,21 @@ The methodology view explains the evaluation dimensions, model workflow and evid
 Vercel Deployment
 =================
 
-GastroEval now has two intentionally separate entry points:
+GastroEval now has two entry points:
 
-- Streamlit (`app.py`) remains the current standalone UI for local use.
-- FastAPI (`api/index.py`) is the serverless backend for Vercel and reuses the existing `gastroeval_engine.py` inference path and trained artifacts.
+- The browser interface at `/` is served by FastAPI and calls the same-origin `/api/analyze` endpoint.
+- Streamlit (`app.py`) remains available as a standalone local UI.
+- FastAPI (`api/index.py`) is the Vercel backend and reuses the existing `gastroeval_engine.py` inference path and trained artifacts.
 
 The API does not retrain the model or change the GastroEval scoring methodology.
 
 Architecture
 ------------
 
-    Frontend or API client
-            |
-            v
-    Vercel -> api/index.py (FastAPI)
-            |
-            v
-    gastroeval_engine.py + gastroeval_artifacts/
+    Browser UI (/) -> POST /api/analyze -> FastAPI (api/index.py)
+                                               |
+                                               v
+                             gastroeval_engine.py + artifacts
 
 Required production dependencies are listed in `requirements.txt`. Streamlit-only and report-generation packages remain in `requirements_streamlit.txt` and are not required by the API.
 
@@ -275,11 +273,11 @@ The response includes the existing GastroEval score and recommendation, aspect s
 Environment variables
 ---------------------
 
-`FRONTEND_ORIGIN` controls CORS. For local frontend development use:
+`FRONTEND_ORIGIN` controls CORS for a separately hosted frontend. The included browser UI uses the same origin and does not need this variable. For an external local frontend use:
 
     FRONTEND_ORIGIN=http://localhost:3000
 
-For production, set it in Vercel to the deployed frontend origin. Multiple origins may be supplied as a comma-separated list.
+For an external production frontend, set it in Vercel to that frontend's origin. Multiple origins may be supplied as a comma-separated list.
 
 Vercel deployment
 -----------------
@@ -289,8 +287,8 @@ Vercel deployment
 3. Leave the framework preset as **Other** (or let Vercel detect the Python function).
 4. Leave the root directory as the repository root.
 5. Do not add a build command or a custom Node server.
-6. Add `FRONTEND_ORIGIN` under Project Settings → Environment Variables.
-7. Deploy and verify `/api/health`, then test `/api/analyze` with at least 10 non-empty reviews.
+6. `FRONTEND_ORIGIN` is optional for the included UI. Set it only for a separately hosted frontend.
+7. Deploy, open `/`, and submit at least 10 non-empty reviews. Verify `/api/health` as well.
 
 Vercel natively detects the FastAPI application exported from `api/index.py`; no custom rewrite is required. The project must retain all five required joblib artifacts in `gastroeval_artifacts/`.
 
@@ -303,7 +301,7 @@ Run the API tests with:
 
 The tests cover health endpoints, a valid model-backed analysis, validation failures, malformed requests, and response structure. They do not retrain the model.
 
-Streamlit remains available locally with:
+The browser UI is served at `/`. Streamlit remains available locally with:
 
     streamlit run app.py
 
