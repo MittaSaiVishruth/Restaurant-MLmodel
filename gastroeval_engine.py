@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import joblib
@@ -1670,6 +1671,7 @@ def build_restaurant_scores(
 ARTIFACT_DIR = Path(__file__).resolve().parent / "gastroeval_artifacts"
 
 
+@lru_cache(maxsize=4)
 def load_inference_artifacts(artifact_dir: str | Path | None = None):
     base = Path(artifact_dir) if artifact_dir else ARTIFACT_DIR
     vectorizer = joblib.load(base / "tfidf_vectorizer.joblib")

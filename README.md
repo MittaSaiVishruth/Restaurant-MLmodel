@@ -206,9 +206,9 @@ Recommendation category
 
 Evidence coverage and quality
 
-Interactive horizontal bar graph for the six dimensions
+Interactive vertical aspect graph for the six dimensions
 
-Hover tooltips showing score and evidence count
+Hover animation for the six aspect bars
 
 Representative customer evidence
 
@@ -217,6 +217,101 @@ Downloadable result formats
 Methodology
 
 The methodology view explains the evaluation dimensions, model workflow and evidence aggregation approach.
+
+Vercel Deployment
+=================
+
+GastroEval now has two intentionally separate entry points:
+
+- Streamlit (`app.py`) remains the current standalone UI for local use.
+- FastAPI (`api/index.py`) is the serverless backend for Vercel and reuses the existing `gastroeval_engine.py` inference path and trained artifacts.
+
+The API does not retrain the model or change the GastroEval scoring methodology.
+
+Architecture
+------------
+
+    Frontend or API client
+            |
+            v
+    Vercel -> api/index.py (FastAPI)
+            |
+            v
+    gastroeval_engine.py + gastroeval_artifacts/
+
+Required production dependencies are listed in `requirements.txt`. Streamlit-only and report-generation packages remain in `requirements_streamlit.txt` and are not required by the API.
+
+Local backend setup
+-------------------
+
+From the project directory:
+
+    python -m venv .venv
+    .venv\\Scripts\\activate       # Windows
+    source .venv/bin/activate       # macOS/Linux
+    pip install -r requirements.txt
+    pip install pytest httpx
+
+Run FastAPI locally:
+
+    uvicorn api.index:app --reload
+
+The API is available at `http://127.0.0.1:8000`.
+
+Health checks
+-------------
+
+    curl http://127.0.0.1:8000/api/health
+    curl http://127.0.0.1:8000/api/
+
+Analyze request
+---------------
+
+    curl -X POST http://127.0.0.1:8000/api/analyze ^
+      -H "Content-Type: application/json" ^
+      -d "{\"restaurant_name\":\"GastroEval Demo\",\"address\":\"Hyderabad\",\"reviews\":[\"Excellent food and friendly service.\",\"The ambience was elegant.\",\"Good value for money.\",\"The restaurant was clean.\",\"The staff were attentive.\",\"The meal was flavorful.\",\"Portions were generous.\",\"The dining experience was pleasant.\",\"Service was quick.\",\"I would recommend this restaurant.\"]}"
+
+The response includes the existing GastroEval score and recommendation, aspect scores and evidence counts, coverage, evidence-quality label, strengths, weaknesses, limited-evidence aspects, representative positive/negative evidence, and analysis metadata.
+
+Environment variables
+---------------------
+
+`FRONTEND_ORIGIN` controls CORS. For local frontend development use:
+
+    FRONTEND_ORIGIN=http://localhost:3000
+
+For production, set it in Vercel to the deployed frontend origin. Multiple origins may be supplied as a comma-separated list.
+
+Vercel deployment
+-----------------
+
+1. Push the repository to GitHub with `api/index.py`, `requirements.txt`, `vercel.json`, and `gastroeval_artifacts/` included.
+2. In Vercel, choose **New Project** and import the repository.
+3. Leave the framework preset as **Other** (or let Vercel detect the Python function).
+4. Leave the root directory as the repository root.
+5. Do not add a build command or a custom Node server.
+6. Add `FRONTEND_ORIGIN` under Project Settings → Environment Variables.
+7. Deploy and verify `/api/health`, then test `/api/analyze` with at least 10 non-empty reviews.
+
+The `vercel.json` rewrite routes `/api/*` requests to the FastAPI function. The project must retain all five required joblib artifacts in `gastroeval_artifacts/`.
+
+Testing
+-------
+
+Run the API tests with:
+
+    pytest -q tests/test_api.py
+
+The tests cover health endpoints, a valid model-backed analysis, validation failures, malformed requests, and response structure. They do not retrain the model.
+
+Streamlit remains available locally with:
+
+    streamlit run app.py
+
+Deployment audit
+----------------
+
+The repository contains a large source dataset and the training notebook `GastroEval_Model.ipynb`. They are not needed by the production inference path and should be excluded from the Vercel deployment if they are not required by the Git history or another workflow. Do not remove them automatically. The trained artifacts are required and must remain available.
 
 Interactive Aspect Graph
 

@@ -1,8 +1,20 @@
-@"
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .env
+.env.*
+!.env.example
 .streamlit/secrets.toml
 .ipynb_checkpoints/
-"@ | Set-Content .gitignore
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.zip
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.ipynb
+*.csv
+Additional data.txt
+GastroEval_Adaa.html
+assets/
+tests/
+requirements_streamlit.txt
